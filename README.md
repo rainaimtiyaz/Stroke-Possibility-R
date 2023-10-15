@@ -1,0 +1,1 @@
+# Stroke-Possibility-R-
