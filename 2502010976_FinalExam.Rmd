@@ -1,0 +1,367 @@
+---
+title: "2502010976_FinalExam"
+author: "Raina Imtiyaz"
+date: '2022-07-16'
+output: html_document
+---
+Name          : Raina Imtiyaz
+Student ID    : 2502010976
+Class         : LA09
+Video link    : https://binusianorg-my.sharepoint.com/personal/raina_imtiyaz_binus_ac_id/_layouts/15/guestaccess.aspx?docid=057a0e588b4524483842811a2bc3da35a&authkey=AQDMwc2MkiF_mws_BcwTUho&e=bp6bcf 
+
+```{r}
+# Used Library
+library(ROCR)
+library(rpart)
+library(rpart.plot)
+library(ggplot2)
+library(Hmisc)
+library(caTools)
+library(caret)
+```
+
+```{r}
+# load data
+stroke_Data <- read.csv(file.choose(), header = TRUE, na.strings = c(""), stringsAsFactors = TRUE)
+# choose StrokeData.csv or StrokeData.xls
+```
+
+# Exploratory Data Analysis
+```{r}
+str(stroke_Data)
+```
+__EXPLANATION__
+1. StrokeData has 5110 observations and 12 variables.
+2. There are 4 integer variables (id, hypertension, heart_disease, and stroke); 6 factor variables (gender, ever_married, work_type, Residence_type, bmi, and smoking_status); 2 numeric variables (age and avg_glucose_level).
+3. hypertension, heart_disease, and stroke variable only contains the numbers 1 and 0 which indicates true or false, so I will change the three variables to logical.
+4. Variable "bmi" contains a number that should be numeric type, but in this data it becomes factor because there is NA string value in it, so I will change it so that there is no NA string value and the type becomes numeric.
+
+```{r}
+# Change hypertension, heart_disease, and stroke to logical
+stroke_Data$hypertension <- as.logical(stroke_Data$hypertension)
+stroke_Data$heart_disease <- as.logical(stroke_Data$heart_disease)
+stroke_Data$stroke <- as.logical(stroke_Data$stroke)
+```
+
+```{r}
+# Replace NA string value to NA
+stroke_Data$bmi[stroke_Data$bmi == 'N/A'] <- NA
+```
+
+```{r}
+# Change bmi (from factor) to numeric
+stroke_Data$bmi <- as.numeric(levels(stroke_Data$bmi))[stroke_Data$bmi]
+```
+```{r}
+str(stroke_Data)
+```
+__EXPLANATION__
+1. hypertension, heart_disease, and stroke variables have been changed to logical, which means the number 0 has been changed to 'FALSE', and the number 1 has been changed to 'TRUE'. The number of FALSE and TRUE can be seen.
+2. Variable "bmi" has been changed to numeric type.
+
+```{r}
+summary(stroke_Data)
+```
+__EXPLANATION__
+1. With the summary function, we can see the details of the data.
+2. Out of 5110 people, only 249 had a stroke(4.87%).
+3. The average people observed are 43 years old.
+4. The people observed were from 0 years old to 82 years old, and the average was 43 years old.
+5. The average BMI of the people observed was 28.89, which means the average of the observed people was overwight.
+
+*BMI chart:
+18.49 and less  = Underweight
+18.5 - 24.99    = Normal
+25 - 29.99      = Overwight
+30 or greater   = Obese
+
+```{r}
+table(stroke_Data$gender, stroke_Data$stroke)
+```
+__EXPLANATION__
+From the table above, it can be seen that the number of female who have had a stroke (141) is more than male (108).
+
+```{r}
+ggplot(stroke_Data, aes(x = age, fill = stroke, colour = stroke)) + geom_bar(position = "stack") + ggtitle("Age and Stroke Count Plot")
+```
+__EXPLANATION__
+From the visualization above, it can be seen that more people who have had a stroke are in the age range of 60-80 years old.
+
+```{r}
+table(stroke_Data$hypertension, stroke_Data$stroke)
+```
+__EXPLANATION__
+From the table above, it can be seen that the number of patients who didn't have hypertension but had a stroke (183) was more than those who had hypertension (66). It can be said that stroke doesn't only attack people with hypertension.
+
+```{r}
+table(stroke_Data$heart_disease, stroke_Data$stroke)
+```
+__EXPLANATION__
+From the table above, it can be seen that the number of patients who didn't have heart disease but had a stroke (202) was more that those who had heart disease (47). It can be said that stroke doesn't only attack people with heart disease.
+
+```{r}
+table(stroke_Data$ever_married, stroke_Data$stroke)
+```
+__EXPLANATION__
+From the table above, it can be seen that the number of married people and had a stroke (220) is more than people who are not married (29).
+
+```{r}
+table(stroke_Data$work_type, stroke_Data$stroke)
+```
+__EXPLANATION__
+From the table above, it can be seen that the highest number of people who have had a stroke private their work type (149). The second largest number are people who are self-employed (65). The third are people who work in the government(33). The fourth is children (2). And the last is people who never worked (0).
+
+```{r}
+table(stroke_Data$Residence_type, stroke_Data$stroke)
+```
+__EXPLANATION__
+From the table above, it can be seen that more people who have had a stroke live in urban areas.
+
+```{r}
+table(stroke_Data$smoking_status, stroke_Data$stroke)
+```
+__EXPLANATION__
+From the table above, it can be seen that more people who have had a stroke have never smoke (90). And there are 42 people who smoke and had a stroke.
+
+```{r}
+ggplot(stroke_Data, aes(x = age, y = avg_glucose_level, colour = stroke)) + geom_point() + labs(title = "Age and Average Glucose Level Plot", x = "Age", y = "Average Glucose Level")
+```
+__EXPLANATION__
+From the visualization above, it can be seen that the older a person is, and the higher number of average glucose level, the higher chance of having a stroke.
+
+```{r}
+ggplot(stroke_Data, aes(x = bmi, y = avg_glucose_level, colour = stroke)) + geom_point() + labs(title = "BMI and Average Glucose Level Plot", x = "BMI", y = "Average Glucose Level")
+```
+__EXPLANATION__
+1. There are 201 rows containing missing values, so those 201 rows will be excluded from the scatter plot.
+2. From the visualization above, it can be seen that the higher number of BMI and average glucose level, the higher the chance of having a stroke.
+
+```{r}
+sapply(stroke_Data, function(x) sum(is.na(x)))
+```
+__EXPLANATION__
+There are 201 NA values in variable "bmi".
+
+```{r}
+sapply(stroke_Data, function(x) length(unique(x)))
+```
+__EXPLANATION__
+1. Variable "id" has 5110 unique values, because everyone's id must be different from each other.
+2. Variable "gender" has 3 unique values (female, male, and other).
+3. Variable "age" has 104 unique values, means there are several people who are the same age.
+4. Variable "hypertension" has 2 unique values (TRUE and FALSE).
+5. Variable "heart_disease" has 2 unique values (TRUE and FALSE).
+6. Variable "ever_married" has 2 unique values (Yes and No).
+7. Variable "work_type" has 5 unique values (children, Govt_job, Never_worked, Private, and Self-employed).
+8. Variable "Residence_type" has 2 unique values (Rural and Urban).
+9. Variable "avg_glucose_level" has 3979 unique values, means there are several people who have the same average glucose level.
+10. Variable "bmi" has 419 unique values, means there are several people who have the same BMI value.
+11. Variable "smoking_status" has 4 unique values (formerly smoked, never smoked, smokes, and Unknown).
+12. Variable "stroke" has 2 unique values (TRUE and FALSE).
+
+
+# Data Preparation
+```{r}
+data <- subset(stroke_Data, select = c(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+head(data)
+```
+__EXPLANATION__
+I didn't put the variable "id" into the "data" subset because I don't think that id has anything to do with stroke, id is just an identifier and differentiator for the people that being observed.
+
+```{r}
+dim(data)
+```
+__EXPLANATION__
+Variable "id" was successfully removed for the "data" subset, it can be seen that the number of variables is reduced (from 12 to 11).
+
+```{r}
+# Replace the NA value in bmi variable to mean value of bmi
+data$bmi[is.na(stroke_Data$bmi)] <- mean(data$bmi, na.rm = TRUE)
+```
+__EXPLANATION__
+I chose to replace the NA value on bmi variable instead of removing it because 201 data is a large amount of data and will affect the accuracy of the model.
+
+```{r}
+head(data)
+```
+__EXPLANATION__
+NA values in the variable "bmi" have been successfully replaced with the mean value of bmi. It can be seen in the second row of the bmi column, it's different from the previous one. The previous one written as "NA", and now it has been written with the mean value of bmi (28.89324).
+
+
+# Split data into training (80%) and validation (20%)
+```{r}
+trData <- data[1:4088,]
+valData <- data[4089:5110,]
+```
+
+```{r}
+unique(valData$stroke)
+```
+__EXPLANATION__
+valData stroke only has 1 unique value, so valData stroke cannot be used for logistic regression, therefore, I use sample.split() to devide the data randomly.
+
+# Split data into training and validation using sample.split()
+```{r}
+set.seed(70)
+splitData <- sample.split(data, SplitRatio = 0.8)
+splitData
+```
+__EXPLANATION__
+Data has been randomized and splitted (80:20).
+
+```{r}
+trData2 <- subset(data, splitData == TRUE)
+dim(trData2)
+```
+```{r}
+valData2 <- subset(data, splitData == FALSE)
+dim(valData2)
+```
+```{r}
+unique(valData2$stroke)
+```
+__EXPLANATION__
+valData2 stroke can be used for logistic regression.
+
+# Modelling
+```{r}
+model1 <- glm(stroke ~., family = binomial(link = "logit"), data = trData2)
+summary(model1)
+```
+__EXPLANATION__
+From the model summary above , it can be seen that only age, hypertensionTRUE, work_typeSelf-employed, and avg_glucose_level that have stars indicating that the data are statistically significant. And there is a dot (.) on heart_diseaseTRUE, work_typeGovt_job, work_typePrivate. So I will only use data from these 4 variables for the second model.
+
+```{r}
+model2 <- glm(stroke ~ age + hypertension + work_type +avg_glucose_level, family = binomial(link = "logit"), data = trData2)
+summary(model2)
+```
+__EXPLANATION__
+From the model summary above, it can be seen that age and avg_glucose_level have 3 stars, while hypertensionTRUE and work_typeSelf-employed only has 1 star, so, only age and avg_glucose_level that have a high level of significance in determining stroke. 
+
+```{r}
+model3 <- glm(stroke ~ age + avg_glucose_level, family = binomial(link = "logit"), data = trData2)
+summary(model3)
+```
+__EXPLANATION__
+Model 3 only contains variables that have a hight level in determining stroke (age and avg_glucose_level).
+
+```{r}
+predLogistic <- predict(model3, subset(valData2, select = c(2, 8)), type = "response")
+strokeEval <- prediction(predLogistic, valData2$stroke)
+perform <- performance(strokeEval, measure = "tpr", x.measure = "fpr")
+plot(perform)
+```
+__EXPLANATION__
+Based on the visualization of the True positive rate and False positive rate plot above, it can be estimated that the AUC (Area Under the Curve) score of the model3 is in the range of 0.6 to 1.0 (based on the last increase of the y value).
+
+```{r}
+#Check AUC score
+auc <- performance(strokeEval, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+```
+__EXPLANATION__
+1. AUC score of model2 is 0.83 (rounding 2 digits after comma).
+2. model3 is a very good model.
+
+
+AUC value   Test Quality
+0.9 - 1.0   Excellent
+0.8 - 0.9   Very Good
+0.7 - 0.8   Good
+0.6 - 0.7   Satisfactory
+0.5 - 0.6   Unsatisfactory
+
+
+# Decision Tree Model
+```{r}
+data$stroke <- as.factor(data$stroke)
+```
+
+```{r}
+set.seed(70)
+splitData2 <- sample.split(data, SplitRatio = 0.8)
+```
+__EXPLANATION__
+Data has been randomized and splitted (80:20).
+
+```{r}
+trData3 <- subset(data, splitData2 == TRUE)
+dim(trData3)
+```
+```{r}
+unique(trData3$stroke)
+```
+
+```{r}
+valData3 <- subset(data, splitData2 == FALSE)
+dim(valData3)
+```
+
+# Modelling Decision Tree
+```{r}
+modelDTree <- rpart(stroke ~., data = trData3, method = "class", cp = 0.001)
+modelDTree
+```
+
+```{r}
+rpart.plot(modelDTree)
+```
+__EXPLANATION__
+The possibilities for people to have a stroke based on the data "trData3" are people who are over 68 years old, have the average glucose level of more than 104, have BMI value more than 26, and unknown smoking status. The percentage of people who have these characteristics in the data "trData3" is 1%.
+
+trData3 data  = 3715 observations
+1% of trData3 = 37.15
+              -> approximately 37 people
+
+# Variable Importance
+```{r}
+imp <- modelDTree$variable.importance
+barplot(imp)
+imp
+```
+__EXPLANATION__
+1. The most important variable is "age".
+2. The order is age, avg_glucose_level, bmi, smoking_status, hypertension, heart_disease, ever_married, gender, and the last is Residence_type.
+
+```{r}
+predDTree <- predict(modelDTree, newdata = subset(valData2, select = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)), type = "class")
+```
+
+# Confusion Matrix
+```{r}
+cfMat <- table(predDTree, valData2$stroke)
+cfMat
+```
+__EXPLANATION__
+The correct prediction results are both "FALSE" or "TRUE", which means the correct prediction for "FALSE" is 1305, and the correct prediction for "TRUE" is 5.
+
+# Evaluation
+```{r}
+sum(diag(cfMat))
+1-sum(diag(cfMat))
+```
+__EXPLANATION__
+1. diag() to select cases on the diagonal and use it for accuracy.
+2. The overall correct classification is 1310.
+3. The incorrect classification is -1309.
+
+```{r}
+accrcy <- diag(cfMat)/rowSums(cfMat)*100
+accrcy
+```
+__EXPLANATION__
+1. Accuracy for label "FALSE" in valData2 is 95.32505.
+2. Accuracy for label "TRUE" in valData2 is 19.23077.
+
+```{r}
+allAccrcy <- sum(diag(cfMat))/sum(cfMat)*100
+allAccrcy
+```
+__EXPLANATION__
+The overall accuracy in valData2 is 93.90681.
+
+# Conclusion
+Variable "age" and "avg_glucose_level" can be used to determine whether a person has the possibility to have a stroke, because both of these variables have a high level of significance and the AUC score that indicates that the statement is 83% correct.
+
+On the visualization of the variable importance, the variable "age" and "avg_glucose_level" are at the top rank (the first rank is age, and the second rank is avg_glucose_level).
